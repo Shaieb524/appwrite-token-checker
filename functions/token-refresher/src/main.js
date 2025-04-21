@@ -1,4 +1,4 @@
-import { Client, Users } from 'node-appwrite';
+import { Client, Users, Query } from 'node-appwrite';
 
 export default async ({ req, res, log, error }) => {
   log('=== TOKEN REFRESHER FUNCTION STARTED ===');
@@ -42,19 +42,19 @@ export default async ({ req, res, log, error }) => {
       log(`Processing user: ${user.$id} (${user.name || 'Unknown name'})`);
       
       try {
-        // Get user identities
-        log(`Fetching identities for user: ${user.$id}`);
-        const identities = await users.listIdentities(user.$id);
-        log(`Found ${identities.total} identities for user ${user.$id}`);
+        // Get only Google identities
+        log(`Fetching Google identities for user: ${user.$id}`);
+        const identities = await users.listIdentities(
+          user.$id, 
+          [Query.equal('provider', 'google')]
+        );
+        log(`Found ${identities.total} Google identities for user ${user.$id}`);
         
         // Process each identity
         for (const identity of identities.identities) {
           log(`Processing identity: ${identity.$id}, provider: ${identity.provider}`);
           
-          if (identity.provider === 'google') {
-            log(`Found Google identity for user ${user.$id}`);
-            
-            try {
+          try {
               const accessToken = identity.providerAccessToken;
               const expiry = identity.providerAccessTokenExpiry;
               
@@ -97,9 +97,6 @@ export default async ({ req, res, log, error }) => {
               log(`ERROR: ${errorMsg}`);
               results.errors++;
             }
-          } else {
-            log(`Skipping non-Google identity: ${identity.provider}`);
-          }
         }
       } catch (userError) {
         const errorMsg = `Error fetching identities for user ${user.$id}: ${userError.message}`;
