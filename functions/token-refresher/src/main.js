@@ -48,7 +48,7 @@ export default async ({ req, res, log, error }) => {
         try {
           // The error suggests we need to provide an array even though we're not filtering
 
-          var identities = await users.listIdentities([Query.equal('provider', 'google')]);
+          var identities = await users.listIdentities([Query.equal('provider', ['google'])]);
           log(`Found ${identities?.total || 0} identities for user ${user.$id}`);
         } catch (err) {
           log(`Error fetching identities: ${err.message}`);
