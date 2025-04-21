@@ -1,19 +1,33 @@
 import { Client, Users } from 'node-appwrite';
 
 export default async ({ req, res, log, error }) => {
-  const client = new Client()
-    .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
-    .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID || '6552291c54fa3fe9cfb2')
-    .setKey(req.headers['x-appwrite-key'] ?? '');
-  const users = new Users(client);
-
-  if (req.path === "/ping") {
-    return res.text("Pong");
-  }
-
+  log('=== TOKEN REFRESHER FUNCTION STARTED ===');
+  log(`Execution time: ${new Date().toISOString()}`);
+  
   try {
+    // Initialize Appwrite client
+    log('Initializing Appwrite client');
+    const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
+    const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID || '6552291c54fa3fe9cfb2';
+    
+    log(`Using endpoint: ${endpoint}`);
+    log(`Using project ID: ${projectId}`);
+    
+    const client = new Client()
+      .setEndpoint(endpoint)
+      .setProject(projectId)
+      .setKey(req.headers['x-appwrite-key'] || process.env.APPWRITE_API_KEY || '');
+    
+    const users = new Users(client);
+    
+    if (req.path === "/ping") {
+      log('Ping request received, responding with Pong');
+      return res.text("Pong");
+    }
+    
+    log('Fetching user list');
     const usersList = await users.list();
-    log(`Found ${usersList.total} users`);
+    log(`Found ${usersList.total} total users`);
 
     const results = {
       checked: 0,
@@ -22,28 +36,46 @@ export default async ({ req, res, log, error }) => {
       details: []
     };
 
+    // Process each user
+    log('Starting to process users');
     for (const user of usersList.users) {
+      log(`Processing user: ${user.$id} (${user.name || 'Unknown name'})`);
+      
       try {
-        log(`Checking identities for user: ${user.$id}`);
+        // Get user identities
+        log(`Fetching identities for user: ${user.$id}`);
         const identities = await users.listIdentities(user.$id);
+        log(`Found ${identities.total} identities for user ${user.$id}`);
         
+        // Process each identity
         for (const identity of identities.identities) {
-          if (identity.provider === 'oauth2') {
+          log(`Processing identity: ${identity.$id}, provider: ${identity.provider}`);
+          
+          if (identity.provider === 'google') {
+            log(`Found Google identity for user ${user.$id}`);
+            
             try {
-              const accessToken = identity.accessToken;
+              const accessToken = identity.providerAccessToken;
+              
               if (!accessToken) {
-                log(`No access token found for identity ${identity.$id}`);
+                log(`WARNING: No access token found for identity ${identity.$id}`);
                 continue;
               }
-
+              
+              log(`Checking token expiry for identity ${identity.$id}`);
+              
+              // Safely log a portion of the token (first 10 chars)
+              const tokenPreview = accessToken.substring(0, 10) + '...';
+              log(`Token preview: ${tokenPreview}`);
+              
               // Check if token is about to expire
-              // Most OAuth tokens include an 'exp' claim in the JWT payload
-              const isNearExpiry = checkTokenExpiry(accessToken);
+              const isNearExpiry = checkTokenExpiry(accessToken, log);
+              log(`Token expiry check result: ${isNearExpiry ? 'NEEDS REFRESH' : 'Valid'}`);
               
               results.checked++;
               
               if (isNearExpiry) {
-                log(`Token for user ${user.$id}, identity ${identity.$id} is near expiry`);
+                log(`⚠️ TOKEN NEEDS REFRESH for user ${user.$id}, identity ${identity.$id}`);
                 results.needsRefresh++;
                 results.details.push({
                   userId: user.$id,
@@ -53,25 +85,42 @@ export default async ({ req, res, log, error }) => {
                 });
                 
                 // TODO: Refresh token logic
-                // Here you would implement the token refresh mechanism
-                // For example:
+                // log(`Attempting to refresh token for identity ${identity.$id}`);
                 // await refreshToken(user.$id, identity.$id, identity.refreshToken);
               }
             } catch (identityError) {
-              error(`Error processing identity ${identity.$id}: ${identityError.message}`);
+              const errorMsg = `Error processing identity ${identity.$id}: ${identityError.message}`;
+              error(errorMsg);
+              log(`ERROR: ${errorMsg}`);
               results.errors++;
             }
+          } else {
+            log(`Skipping non-Google identity: ${identity.provider}`);
           }
         }
       } catch (userError) {
-        error(`Error fetching identities for user ${user.$id}: ${userError.message}`);
+        const errorMsg = `Error fetching identities for user ${user.$id}: ${userError.message}`;
+        error(errorMsg);
+        log(`ERROR: ${errorMsg}`);
         results.errors++;
       }
     }
 
+    // Summarize results
+    log('=== TOKEN REFRESHER SUMMARY ===');
+    log(`Total tokens checked: ${results.checked}`);
+    log(`Tokens needing refresh: ${results.needsRefresh}`);
+    log(`Errors encountered: ${results.errors}`);
+    log(`Detailed results: ${JSON.stringify(results.details)}`);
+    log('=== TOKEN REFRESHER COMPLETED ===');
+
     return res.json(results);
   } catch (err) {
-    error(`Failed to process users: ${err.message}`);
+    const errorMsg = `Failed to process users: ${err.message}`;
+    error(errorMsg);
+    log(`CRITICAL ERROR: ${errorMsg}`);
+    log('=== TOKEN REFRESHER FAILED ===');
+    
     return res.json({
       success: false,
       error: err.message
@@ -79,32 +128,43 @@ export default async ({ req, res, log, error }) => {
   }
 };
 
-function checkTokenExpiry(token) {
+function checkTokenExpiry(token, logFunction) {
+  const log = logFunction || console.log;
+  
   try {
+    // TODO change this coz google token is not a JWT
     // Split the token to get the payload
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      return true; // If token format is invalid, flag for refresh
-    }
+    // const parts = token.split('.');
+    // if (parts.length !== 3) {
+    //   log('Token format is invalid (not a JWT)');
+    //   return true; // If token format is invalid, flag for refresh
+    // }
 
-    // Decode the payload
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+    // // Decode the payload
+    // const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
     
-    // Check if there's an expiration time
-    if (!payload.exp) {
-      return false; // No expiration, assume valid
-    }
+    // // Check if there's an expiration time
+    // if (!payload.exp) {
+    //   log('Token has no expiration claim');
+    //   return false; // No expiration, assume valid
+    // }
 
-    // Calculate time remaining
-    const expiryTime = payload.exp * 1000; // Convert to milliseconds
-    const currentTime = Date.now();
-    const timeRemaining = expiryTime - currentTime;
+    // // Calculate time remaining
+    // const expiryTime = payload.exp * 1000; // Convert to milliseconds
+    // const currentTime = Date.now();
+    // const timeRemaining = expiryTime - currentTime;
     
-    // Consider tokens with less than 1 day (86400000 ms) remaining as "near expiry"
-    const nearExpiryThreshold = 86400000;
+    // // Consider tokens with less than 1 day (86400000 ms) remaining as "near expiry"
+    // const nearExpiryThreshold = 86400000;
     
-    return timeRemaining < nearExpiryThreshold;
+    // const expiryDate = new Date(expiryTime);
+    // const daysRemaining = Math.floor(timeRemaining / 86400000);
+    
+    // log(`Token expires at: ${expiryDate.toISOString()}, ${daysRemaining} days remaining`);
+    
+    // return timeRemaining < nearExpiryThreshold;
   } catch (error) {
+    log(`Error parsing token: ${error.message}`);
     // If we can't parse the token, consider it needing refresh
     return true;
   }
