@@ -56,6 +56,7 @@ export default async ({ req, res, log, error }) => {
             
             try {
               const accessToken = identity.providerAccessToken;
+              const expiry = identity.providerAccessTokenExpiry;
               
               if (!accessToken) {
                 log(`WARNING: No access token found for identity ${identity.$id}`);
@@ -68,8 +69,9 @@ export default async ({ req, res, log, error }) => {
               const tokenPreview = accessToken.substring(0, 10) + '...';
               log(`Token preview: ${tokenPreview}`);
               
-              // Check if token is about to expire
-              const isNearExpiry = checkTokenExpiry(accessToken, log);
+              // Check expiry using our dedicated function
+              const isNearExpiry = checkExpiryDate(expiry, log);
+              
               log(`Token expiry check result: ${isNearExpiry ? 'NEEDS REFRESH' : 'Valid'}`);
               
               results.checked++;
@@ -81,6 +83,7 @@ export default async ({ req, res, log, error }) => {
                   userId: user.$id,
                   identityId: identity.$id,
                   provider: identity.provider,
+                  expiryDate: expiry || 'Unknown',
                   needsRefresh: true
                 });
                 
@@ -128,44 +131,33 @@ export default async ({ req, res, log, error }) => {
   }
 };
 
-function checkTokenExpiry(token, logFunction) {
+// Check if a token is near expiry based on its expiry date
+function checkExpiryDate(expiryDateString, logFunction) {
   const log = logFunction || console.log;
   
   try {
-    // TODO change this coz google token is not a JWT
-    // Split the token to get the payload
-    // const parts = token.split('.');
-    // if (parts.length !== 3) {
-    //   log('Token format is invalid (not a JWT)');
-    //   return true; // If token format is invalid, flag for refresh
-    // }
-
-    // // Decode the payload
-    // const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+    // If no expiry date is provided, consider it as needing refresh
+    if (!expiryDateString) {
+      log('No expiry date provided');
+      return true;
+    }
     
-    // // Check if there's an expiration time
-    // if (!payload.exp) {
-    //   log('Token has no expiration claim');
-    //   return false; // No expiration, assume valid
-    // }
-
-    // // Calculate time remaining
-    // const expiryTime = payload.exp * 1000; // Convert to milliseconds
-    // const currentTime = Date.now();
-    // const timeRemaining = expiryTime - currentTime;
+    // Parse the expiry date
+    const expiryDate = new Date(expiryDateString);
+    const currentTime = Date.now();
+    const timeRemaining = expiryDate.getTime() - currentTime;
     
-    // // Consider tokens with less than 1 day (86400000 ms) remaining as "near expiry"
-    // const nearExpiryThreshold = 86400000;
+    // Consider tokens with less than 1 day (86400000 ms) remaining as "near expiry"
+    const nearExpiryThreshold = 86400000;
+    const daysRemaining = Math.floor(timeRemaining / 86400000);
     
-    // const expiryDate = new Date(expiryTime);
-    // const daysRemaining = Math.floor(timeRemaining / 86400000);
+    log(`Token expires at: ${expiryDate.toISOString()}, ${daysRemaining} days remaining`);
     
-    // log(`Token expires at: ${expiryDate.toISOString()}, ${daysRemaining} days remaining`);
-    
-    // return timeRemaining < nearExpiryThreshold;
+    // Token is near expiry if less than threshold time remains
+    return timeRemaining < nearExpiryThreshold;
   } catch (error) {
-    log(`Error parsing token: ${error.message}`);
-    // If we can't parse the token, consider it needing refresh
+    log(`Error parsing expiry date: ${error.message}`);
+    // If we can't parse the date, consider it needing refresh
     return true;
   }
 }
