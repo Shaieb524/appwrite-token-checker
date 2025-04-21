@@ -42,29 +42,19 @@ export default async ({ req, res, log, error }) => {
       log(`Processing user: ${user.$id} (${user.name || 'Unknown name'})`);
       
       try {
-        // Updated approach based on error messages
+        // Simplified approach - just log the error if it occurs
         log(`Fetching identities for user: ${user.$id}`);
         
         try {
-          log('Attempting with empty array for queries');
-          var identities = await users.listIdentities(user.$id, []);
-          log(`Successfully fetched identities with userId and empty array`);
+          // The error suggests we need to provide an array even though we're not filtering
+
+          var identities = await users.listIdentities([Query.equal('provider', 'google')]);
+          log(`Found ${identities?.total || 0} identities for user ${user.$id}`);
         } catch (err) {
-          log(`Approach failed: ${err.message}`);
-          
-          // If that fails, let's try a direct API call
-          try {
-            log('Falling back to direct API call with SDK client');
-            const response = await client.call('get', `/users/${user.$id}/identities`);
-            identities = response || { total: 0, identities: [] };
-            log(`Direct API call succeeded`);
-          } catch (apiErr) {
-            log(`Direct API call failed: ${apiErr.message}`);
-            identities = { total: 0, identities: [] };
-          }
+          log(`Error fetching identities: ${err.message}`);
+          // Create an empty result to continue execution
+          identities = { total: 0, identities: [] };
         }
-        
-        log(`Found ${identities?.total || 0} identities for user ${user.$id}`);
         
         // Process each identity - only Google ones
         if (!identities || !identities.identities) {
