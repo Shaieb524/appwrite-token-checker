@@ -42,37 +42,25 @@ export default async ({ req, res, log, error }) => {
       log(`Processing user: ${user.$id} (${user.name || 'Unknown name'})`);
       
       try {
-        // Try approach from documentation example
+        // Updated approach based on error messages
         log(`Fetching identities for user: ${user.$id}`);
         
-        // The docs show userId is NOT the first parameter
-        // Let's try with the correct parameter order
         try {
-          log('Attempting v1: userId first');
-          var identities = await users.listIdentities(user.$id);
+          log('Attempting with empty array for queries');
+          var identities = await users.listIdentities(user.$id, []);
+          log(`Successfully fetched identities with userId and empty array`);
         } catch (err) {
-          log(`First approach failed: ${err.message}`);
+          log(`Approach failed: ${err.message}`);
           
+          // If that fails, let's try a direct API call
           try {
-            log('Attempting v2: empty queries array first');
-            identities = await users.listIdentities([], null, user.$id);
-          } catch (err2) {
-            log(`Second approach failed: ${err2.message}`);
-            
-            try {
-              log('Attempting v3: using different signature');
-              identities = {
-                total: 0,
-                identities: []
-              };
-              
-              // If all else fails, get user doc and check it directly
-              const userDetails = await users.get(user.$id);
-              log(`Retrieved user details directly: ${userDetails.$id}`);
-            } catch (err3) {
-              log(`Third approach failed: ${err3.message}`);
-              throw new Error('Could not retrieve identities with any method');
-            }
+            log('Falling back to direct API call with SDK client');
+            const response = await client.call('get', `/users/${user.$id}/identities`);
+            identities = response || { total: 0, identities: [] };
+            log(`Direct API call succeeded`);
+          } catch (apiErr) {
+            log(`Direct API call failed: ${apiErr.message}`);
+            identities = { total: 0, identities: [] };
           }
         }
         
