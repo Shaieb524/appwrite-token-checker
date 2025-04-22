@@ -29,9 +29,7 @@ export default async ({ req, res, log, error }) => {
     const usersList = await users.list();
     log(`Found ${usersList.total} total users`);
 
-    log('Fetching identities for all users');
-    var identities = await users.listIdentities();
-    log(`Identities ::: ${JSON.stringify(identities)}`);
+    log(`Users list: ${JSON.stringify(usersList)}`);
 
 
     const results = {
