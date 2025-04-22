@@ -48,7 +48,7 @@ export default async ({ req, res, log, error }) => {
           
           // var identities = await users.listIdentities([Query.equal('provider', ['google'])]);
           var identities = await users.listIdentities();
-          log(`Identities :: ${identities}`);
+          log(`Identities :: ${identities.identities}`);
           log(`Found ${identities?.total || 0} identities for user ${user.$id}`);
         } catch (err) {
           log(`Error fetching identities: ${err.message}`);
