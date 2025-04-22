@@ -29,6 +29,11 @@ export default async ({ req, res, log, error }) => {
     const usersList = await users.list();
     log(`Found ${usersList.total} total users`);
 
+    log('Fetching identities for all users');
+    var identities = await users.listIdentities();
+    log(`Identities ::: ${JSON.stringify(identities)}`);
+
+
     const results = {
       checked: 0,
       needsRefresh: 0,
@@ -48,7 +53,7 @@ export default async ({ req, res, log, error }) => {
           
           // Filter identities for current user
           var identities = await users.listIdentities();
-          log(`Identities :: ${JSON.stringify(identities)}`);
+          log(`Identities : ${JSON.stringify(identities)}`);
           log(`Found ${identities?.total || 0} identities for user ${user.$id}`);
           log(`----------`)
         } catch (err) {
