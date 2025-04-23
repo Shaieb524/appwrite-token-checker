@@ -50,7 +50,7 @@ export default async ({ req, res, log, error }) => {
         try {
           
           // Filter identities for current user
-          var identities = await users.listIdentities();
+          var identities = await users.listIdentities([Query.equal('userId', [user.$id])]);
           log(`Identities : ${JSON.stringify(identities)}`);
           log(`Found ${identities?.total || 0} identities for user ${user.$id}`);
           log(`----------`)
