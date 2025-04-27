@@ -110,6 +110,8 @@ export default async ({ req, res, log, error }) => {
                 
                 // TODO: Refresh token logic
                 // log(`Attempting to refresh token for identity ${identity.$id}`);
+                const userSessions = await users.listSessions(user.$id);
+                log(`User sessions: ${JSON.stringify(userSessions)}`);
                 // await refreshToken(user.$id, identity.$id, identity.refreshToken);
               }
             } catch (identityError) {
