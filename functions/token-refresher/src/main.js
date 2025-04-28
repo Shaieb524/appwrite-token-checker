@@ -9,9 +9,11 @@ export default async ({ req, res, log, error }) => {
     log('Initializing Appwrite client');
     const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
     const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID || '6552291c54fa3fe9cfb2';
-    
+    const apiKey = process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'] || '';
+
     log(`Using endpoint: ${endpoint}`);
     log(`Using project ID: ${projectId}`);
+    log(`Using apiKey: ${apiKey}`);
     
     const client = new Client()
       .setEndpoint(endpoint)
@@ -114,16 +116,16 @@ export default async ({ req, res, log, error }) => {
                 const userSessions = await users.listSessions(user.$id);
                 log(`User sessions: ${JSON.stringify(userSessions)}`);
 
-                var sessions = userSessions.sessions || [];
-                log(`Trying to update google session for user ${user.$id}`);
-                for (const session of sessions) {
-                  log(`Session ID: ${session.$id}, provider: ${session.provider}`);
-                  if (session.provider === 'google') {
-                    log(`Refreshing token for session ${session.$id}`);
-                    const res = await account.updateSession(session.$id);
-                    log(`Response: ${JSON.stringify(res)}`);
-                  }
-                }
+                // var sessions = userSessions.sessions || [];
+                // log(`Trying to update google session for user ${user.$id}`);
+                // for (const session of sessions) {
+                //   log(`Session ID: ${session.$id}, provider: ${session.provider}`);
+                //   if (session.provider === 'google') {
+                //     log(`Refreshing token for session ${session.$id}`);
+                //     const res = await account.updateSession(session.$id);
+                //     log(`Response: ${JSON.stringify(res)}`);
+                //   }
+                // }
                 // await refreshToken(user.$id, identity.$id, identity.refreshToken);
               }
             } catch (identityError) {
