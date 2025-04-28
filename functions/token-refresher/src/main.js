@@ -128,16 +128,9 @@ export default async ({ req, res, log, error }) => {
                     }
                     catch (err) {
                       log(`Error refreshing token: ${err.message}`);
-                      results.errors++;
-                      results.details.push({
-                        userId: user.$id,
-                        identityId: identity.$id,
-                        provider: identity.provider,
-                        error: err.message
-                      });
                     }
+                  }
                 }
-                // await refreshToken(user.$id, identity.$id, identity.refreshToken);
               }
             } catch (identityError) {
               const errorMsg = `Error processing identity ${identity.$id}: ${identityError.message}`;
