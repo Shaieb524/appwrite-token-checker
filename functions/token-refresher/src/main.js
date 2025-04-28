@@ -116,16 +116,27 @@ export default async ({ req, res, log, error }) => {
                 const userSessions = await users.listSessions(user.$id);
                 log(`User sessions: ${JSON.stringify(userSessions)}`);
 
-                // var sessions = userSessions.sessions || [];
-                // log(`Trying to update google session for user ${user.$id}`);
-                // for (const session of sessions) {
-                //   log(`Session ID: ${session.$id}, provider: ${session.provider}`);
-                //   if (session.provider === 'google') {
-                //     log(`Refreshing token for session ${session.$id}`);
-                //     const res = await account.updateSession(session.$id);
-                //     log(`Response: ${JSON.stringify(res)}`);
-                //   }
-                // }
+                var sessions = userSessions.sessions || [];
+                log(`Trying to update google session for user ${user.$id}`);
+                for (const session of sessions) {
+                  log(`Session ID: ${session.$id}, provider: ${session.provider}`);
+                  if (session.provider === 'google') {
+                    log(`Refreshing token for session ${session.$id}`);
+                    try {
+                      const res = await account.updateSession(session.$id);
+                      log(`Response: ${JSON.stringify(res)}`);
+                    }
+                    catch (err) {
+                      log(`Error refreshing token: ${err.message}`);
+                      results.errors++;
+                      results.details.push({
+                        userId: user.$id,
+                        identityId: identity.$id,
+                        provider: identity.provider,
+                        error: err.message
+                      });
+                    }
+                }
                 // await refreshToken(user.$id, identity.$id, identity.refreshToken);
               }
             } catch (identityError) {
