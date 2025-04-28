@@ -19,7 +19,8 @@ export default async ({ req, res, log, error }) => {
       .setKey(req.headers['x-appwrite-key'] || process.env.APPWRITE_API_KEY || '');
     
     const users = new Users(client);
-    
+    const account = new Account(client);
+
     if (req.path === "/ping") {
       log('Ping request received, responding with Pong');
       return res.text("Pong");
@@ -119,7 +120,7 @@ export default async ({ req, res, log, error }) => {
                   log(`Session ID: ${session.$id}, provider: ${session.provider}`);
                   if (session.provider === 'google') {
                     log(`Refreshing token for session ${session.$id}`);
-                    const res = await user.updateSession(session.$id);
+                    const res = await account.updateSession(session.$id);
                     log(`Response: ${JSON.stringify(res)}`);
                   }
                 }
