@@ -1,4 +1,4 @@
-import { Client, Users, Query } from 'node-appwrite';
+import { Client, Account, Users, Query } from 'node-appwrite';
 
 export default async ({ req, res, log, error }) => {
   log('=== TOKEN REFRESHER FUNCTION STARTED ===');
