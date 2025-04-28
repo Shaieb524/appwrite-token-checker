@@ -112,6 +112,17 @@ export default async ({ req, res, log, error }) => {
                 // log(`Attempting to refresh token for identity ${identity.$id}`);
                 const userSessions = await users.listSessions(user.$id);
                 log(`User sessions: ${JSON.stringify(userSessions)}`);
+
+                var sessions = userSessions.sessions || [];
+                log(`Trying to update google session for user ${user.$id}`);
+                for (const session of sessions) {
+                  log(`Session ID: ${session.$id}, provider: ${session.provider}`);
+                  if (session.provider === 'google') {
+                    log(`Refreshing token for session ${session.$id}`);
+                    const res = await user.updateSession(session.$id);
+                    log(`Response: ${JSON.stringify(res)}`);
+                  }
+                }
                 // await refreshToken(user.$id, identity.$id, identity.refreshToken);
               }
             } catch (identityError) {
