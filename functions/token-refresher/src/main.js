@@ -17,7 +17,8 @@ export default async ({ req, res, log, error }) => {
     
     const client = new Client()
       .setEndpoint(endpoint)
-      .setProject(projectId);
+      .setProject(projectId)
+      .setKey(apiKey);
     
     const users = new Users(client);
     const account = new Account(client);
