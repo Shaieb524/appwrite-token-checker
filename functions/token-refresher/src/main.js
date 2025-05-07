@@ -7,9 +7,9 @@ export default async ({ req, res, log, error }) => {
   try {
     // Initialize Appwrite client
     log('Initializing Appwrite client');
-    const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
-    const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID || '6552291c54fa3fe9cfb2';
-    const apiKey = process.env.APPWRITE_API_KEY || req.headers['x-appwrite-key'] || '';
+    const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT;
+    const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID;
+    const apiKey = process.env.APPWRITE_API_KEY;
 
     log(`Using endpoint: ${endpoint}`);
     log(`Using project ID: ${projectId}`);
